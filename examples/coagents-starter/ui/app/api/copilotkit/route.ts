@@ -24,18 +24,31 @@ const runtime = new CopilotRuntime({
     //     },
     //   ],
     // }),
-    // {
-    //   url: process.env.REMOTE_ACTION_URL || "http://localhost:8000/copilotkit",
-    // },
+    {
+      url: process.env.REMOTE_ACTION_URL || "http://localhost:8000/copilotkit",
+    },
   ],
 });
 
 export const POST = async (req: NextRequest) => {
-  const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
-    runtime,
-    serviceAdapter,
-    endpoint: "/api/copilotkit",
-  });
+  console.log("🚀 [UI] Received POST request to /api/copilotkit");
+  console.log("🔧 [UI] REMOTE_ACTION_URL:", process.env.REMOTE_ACTION_URL || "http://localhost:8000/copilotkit");
+  
+  try {
+    const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
+      runtime,
+      serviceAdapter,
+      endpoint: "/api/copilotkit",
+    });
 
-  return handleRequest(req);
+    console.log("⏳ [UI] Calling handleRequest...");
+    const response = await handleRequest(req);
+    console.log("✅ [UI] handleRequest completed successfully");
+    console.log("📤 [UI] Response status:", response.status);
+    
+    return response;
+  } catch (error) {
+    console.error("❌ [UI] Error handling request:", error);
+    throw error;
+  }
 };

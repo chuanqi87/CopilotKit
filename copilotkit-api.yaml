@@ -1,0 +1,611 @@
+openapi: 3.0.3
+info:
+  title: Code Agent API
+  description: |-
+    本接口文档参考了CopilotKit客户端与CopilotKit后端服务之间的通信 API。
+
+    该 API 允许客户端：
+    - 发现可用的 actions 和 agents。
+    - 使用特定参数执行 action。
+    - 运行 agent 并接收流式更新。
+    - 检索给定对话线程中 agent 的状态。
+
+    Agent(代理)
+    Agent 是 CopilotKit 中的智能代理，它是一个能够独立思考、决策和执行复杂任务的 AI 系统。可以把它想象成一个"虚拟同事"，能够处理从简单查询到复杂业务流程的各种任务。
+    Agent 的核心特点：
+    - 状态管理 - Agent 拥有自己的状态，能够记住对话历史和中间结果
+    - 多步推理 - 能够进行复杂的多步骤思考和决策
+    - 工具调用 - 可以调用各种工具和 Action 来完成任务
+    - 流程控制 - 使用 LangGraph 等框架进行复杂的工作流编排
+
+    Action(动作)
+    Action 是 CopilotKit 中的具体功能函数，它是 Agent 可以调用的"工具"。每个 Action 执行一个特定的任务，比如发送邮件、查询数据库、修改 UI 状态等。
+    Action 的核心特点：
+    - 单一职责 - 每个 Action 只做一件具体的事情
+    - 即时执行 - 调用后立即执行并返回结果
+    - 参数化 - 接受特定的参数来执行任务
+    - 前后端兼容 - 可以在前端或后端定义和执行
+  version: 0.1.0
+
+paths:
+  /info:
+    post:
+      summary: 发现 Actions 和 Agents
+      description: |
+        从后端检索可用的 actions 和 agents 列表。
+        客户端调用此端点以了解后端的功能。
+        此端点也可以通过 GET 或 POST 在根路径（/）上访问。
+      tags:
+        - 发现
+      requestBody:
+        description: 请求的上下文属性。
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InfoRequest'
+      responses:
+        '200':
+          description: 成功响应，包含 actions 和 agents。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfoResponse'
+        '500':
+          description: 服务器内部错误。
+
+  /action/{name}:
+    post:
+      summary: 执行 Action
+      description: 按名称执行特定 action。
+      tags:
+        - 执行
+      parameters:
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          description: 要执行的 action 的名称。
+      requestBody:
+        description: Action 的参数和上下文属性。
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteActionRequest'
+      responses:
+        '200':
+          description: Action 执行的结果。
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: object
+                    description: Action 处理程序的返回值。
+                    additionalProperties: true
+        '404':
+          description: 未找到 Action。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Action 执行错误。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /agent/{name}:
+    post:
+      summary: 执行 Agent
+      description: |
+        执行一个 agent 并接收事件流。
+        响应是一个流式响应，其中的 JSON 对象以换行符分隔。
+        每个事件都是一个 RuntimeEvent 对象，代表 agent 执行过程中的不同阶段。
+      tags:
+        - 执行
+      parameters:
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          description: 要执行的 agent 的名称。
+      requestBody:
+        description: 执行 agent 的完整上下文。
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteAgentRequest'
+      responses:
+        '200':
+          description: 来自 agent 执行的事件流。
+          content:
+            application/x-ndjson:
+              schema:
+                type: string
+                description: |
+                  一个以换行符分隔的 JSON 流。每一行都是一个 JSON 对象，
+                  代表一个运行时事件。可能的事件类型包括：
+                  - TextMessageStart: 开始一个文本消息
+                  - TextMessageContent: 文本消息内容
+                  - TextMessageEnd: 结束一个文本消息
+                  - ActionExecutionStart: 开始执行一个 action
+                  - ActionExecutionArgs: Action 的参数
+                  - ActionExecutionEnd: 结束执行一个 action
+                  - ActionExecutionResult: Action 的执行结果
+                  - AgentStateMessage: Agent 状态更新
+                  - MetaEvent: 元事件（如中断事件）
+                example: |
+                  {"type": "TextMessageStart", "messageId": "msg-123"}
+                  {"type": "TextMessageContent", "messageId": "msg-123", "content": "Hello"}
+                  {"type": "TextMessageEnd", "messageId": "msg-123"}
+                  {"type": "ActionExecutionStart", "actionExecutionId": "exec-456", "actionName": "search", "parentMessageId": "msg-123"}
+                  {"type": "ActionExecutionArgs", "actionExecutionId": "exec-456", "args": "{\"query\":\"test\"}"}
+                  {"type": "ActionExecutionEnd", "actionExecutionId": "exec-456"}
+                  {"type": "ActionExecutionResult", "actionExecutionId": "exec-456", "actionName": "search", "result": "搜索结果"}
+        '404':
+          description: 未找到 Agent。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Agent 执行错误。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /agent/{name}/state:
+    post:
+      summary: 获取 Agent 状态
+      description: 检索特定 agent 在给定线程中的状态。
+      tags:
+        - 状态
+      parameters:
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+          description: Agent 的名称。
+      requestBody:
+        description: 线程 ID 和上下文属性。
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentStateRequest'
+      responses:
+        '200':
+          description: Agent 的当前状态。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentStateResponse'
+        '404':
+          description: 未找到 Agent。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 获取 agent 状态时出错。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    # --- 请求模式 ---
+
+    InfoRequest:
+      type: object
+      properties:
+        properties:
+          type: object
+          description: 用于将上下文属性从客户端传递到后端的任意对象。
+          additionalProperties: true
+        frontendUrl:
+          type: string
+          format: uri
+          description: 前端客户端的 URL。
+
+    ExecuteActionRequest:
+      type: object
+      properties:
+        arguments:
+          type: object
+          description: Action 的参数键值对。
+          additionalProperties: true
+        properties:
+          type: object
+          description: 用于传递上下文属性的任意对象。
+          additionalProperties: true
+
+    ExecuteAgentRequest:
+      type: object
+      properties:
+        threadId:
+          type: string
+          description: 对话线程的 ID。可以是一个 UUID。
+        nodeName:
+          type: string
+          description: 在基于图的 agent（例如 LangGraph）中要执行的节点的名称。
+        state:
+          type: object
+          description: Agent 的当前状态。
+          additionalProperties: true
+        config:
+          type: object
+          description: Agent 执行的配置。
+          additionalProperties: true
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Action'
+        metaEvents:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetaEvent'
+        properties:
+          type: object
+          description: 用于传递上下文属性的任意对象。
+          additionalProperties: true
+
+    AgentStateRequest:
+      type: object
+      required:
+        - threadId
+      properties:
+        threadId:
+          type: string
+          description: 对话线程的 ID。
+        properties:
+          type: object
+          description: 用于传递上下文属性的任意对象。
+          additionalProperties: true
+
+    # --- 响应模式 ---
+
+    InfoResponse:
+      type: object
+      properties:
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Action'
+        agents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Agent'
+        sdkVersion:
+          type: string
+          description: CopilotKit Python SDK 的版本。
+
+    AgentStateResponse:
+      type: object
+      properties:
+        threadId:
+          type: string
+        threadExists:
+          type: boolean
+        state:
+          type: object
+          additionalProperties: true
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: 描述错误的消息。
+
+    # --- 流式事件模式 ---
+
+    RuntimeEvent:
+      oneOf:
+        - $ref: '#/components/schemas/TextMessageStartEvent'
+        - $ref: '#/components/schemas/TextMessageContentEvent'
+        - $ref: '#/components/schemas/TextMessageEndEvent'
+        - $ref: '#/components/schemas/ActionExecutionStartEvent'
+        - $ref: '#/components/schemas/ActionExecutionArgsEvent'
+        - $ref: '#/components/schemas/ActionExecutionEndEvent'
+        - $ref: '#/components/schemas/ActionExecutionResultEvent'
+        - $ref: '#/components/schemas/AgentStateMessageEvent'
+        - $ref: '#/components/schemas/MetaEventEvent'
+      discriminator:
+        propertyName: type
+        mapping:
+          TextMessageStart: '#/components/schemas/TextMessageStartEvent'
+          TextMessageContent: '#/components/schemas/TextMessageContentEvent'
+          TextMessageEnd: '#/components/schemas/TextMessageEndEvent'
+          ActionExecutionStart: '#/components/schemas/ActionExecutionStartEvent'
+          ActionExecutionArgs: '#/components/schemas/ActionExecutionArgsEvent'
+          ActionExecutionEnd: '#/components/schemas/ActionExecutionEndEvent'
+          ActionExecutionResult: '#/components/schemas/ActionExecutionResultEvent'
+          AgentStateMessage: '#/components/schemas/AgentStateMessageEvent'
+          MetaEvent: '#/components/schemas/MetaEventEvent'
+
+    TextMessageStartEvent:
+      type: object
+      required:
+        - type
+        - messageId
+      properties:
+        type:
+          type: string
+          enum: [TextMessageStart]
+        messageId:
+          type: string
+          description: 消息的唯一标识符。
+        parentMessageId:
+          type: string
+          description: 父消息的 ID（可选）。
+
+    TextMessageContentEvent:
+      type: object
+      required:
+        - type
+        - messageId
+        - content
+      properties:
+        type:
+          type: string
+          enum: [TextMessageContent]
+        messageId:
+          type: string
+          description: 消息的唯一标识符。
+        content:
+          type: string
+          description: 消息内容的增量部分。
+
+    TextMessageEndEvent:
+      type: object
+      required:
+        - type
+        - messageId
+      properties:
+        type:
+          type: string
+          enum: [TextMessageEnd]
+        messageId:
+          type: string
+          description: 消息的唯一标识符。
+
+    ActionExecutionStartEvent:
+      type: object
+      required:
+        - type
+        - actionExecutionId
+        - actionName
+      properties:
+        type:
+          type: string
+          enum: [ActionExecutionStart]
+        actionExecutionId:
+          type: string
+          description: Action 执行的唯一标识符。
+        actionName:
+          type: string
+          description: 被执行的 action 的名称。
+        parentMessageId:
+          type: string
+          description: 触发此 action 的消息 ID（可选）。
+
+    ActionExecutionArgsEvent:
+      type: object
+      required:
+        - type
+        - actionExecutionId
+        - args
+      properties:
+        type:
+          type: string
+          enum: [ActionExecutionArgs]
+        actionExecutionId:
+          type: string
+          description: Action 执行的唯一标识符。
+        args:
+          type: string
+          description: JSON 格式的 action 参数。
+
+    ActionExecutionEndEvent:
+      type: object
+      required:
+        - type
+        - actionExecutionId
+      properties:
+        type:
+          type: string
+          enum: [ActionExecutionEnd]
+        actionExecutionId:
+          type: string
+          description: Action 执行的唯一标识符。
+
+    ActionExecutionResultEvent:
+      type: object
+      required:
+        - type
+        - actionExecutionId
+        - actionName
+        - result
+      properties:
+        type:
+          type: string
+          enum: [ActionExecutionResult]
+        actionExecutionId:
+          type: string
+          description: Action 执行的唯一标识符。
+        actionName:
+          type: string
+          description: 被执行的 action 的名称。
+        result:
+          type: string
+          description: JSON 格式的 action 执行结果。
+
+    AgentStateMessageEvent:
+      type: object
+      required:
+        - type
+        - threadId
+        - agentName
+        - nodeName
+        - runId
+        - active
+        - role
+        - state
+        - running
+      properties:
+        type:
+          type: string
+          enum: [AgentStateMessage]
+        threadId:
+          type: string
+          description: 对话线程的 ID。
+        agentName:
+          type: string
+          description: Agent 的名称。
+        nodeName:
+          type: string
+          description: 当前执行的节点名称。
+        runId:
+          type: string
+          description: 运行的唯一标识符。
+        active:
+          type: boolean
+          description: 节点是否处于活动状态。
+        role:
+          type: string
+          description: 消息的角色（通常是 "assistant"）。
+        state:
+          type: string
+          description: JSON 格式的 agent 状态。
+        running:
+          type: boolean
+          description: Agent 是否正在运行。
+
+    MetaEventEvent:
+      type: object
+      required:
+        - type
+        - name
+        - value
+      properties:
+        type:
+          type: string
+          enum: [MetaEvent]
+        name:
+          type: string
+          enum: [LangGraphInterruptEvent, CopilotKitLangGraphInterruptEvent, PredictState, Exit]
+          description: 元事件的名称。
+        value:
+          type: object
+          description: 元事件的值，结构取决于具体的事件类型。
+          additionalProperties: true
+
+    # --- 通用模式 ---
+
+    Action:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/Parameter'
+
+    Agent:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [langgraph, crewai]
+          description: Agent 的类型。
+
+    Parameter:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          description: 参数的 JSON 模式类型（例如 'string', 'number'）。
+        description:
+          type: string
+        required:
+          type: boolean
+
+    Message:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [TextMessage, ActionExecutionMessage, ResultMessage]
+        role:
+          type: string
+          enum: [user, assistant, tool]
+        content:
+          type: string
+          description: 文本消息的内容 (用于 TextMessage)。
+        # ActionExecutionMessage specific fields
+        parentMessageId:
+          type: string
+          description: 原始消息的 ID，通常是触发此 action 的 assistant 消息 (用于 ActionExecutionMessage)。
+        name:
+          type: string
+          description: 正在执行的 action 的名称 (用于 ActionExecutionMessage)。
+        arguments:
+          type: object
+          additionalProperties: true
+          description: Action 的参数 (用于 ActionExecutionMessage)。
+        # ResultMessage specific fields
+        actionExecutionId:
+          type: string
+          description: 对应的 ActionExecutionMessage 的 ID (用于 ResultMessage)。
+        actionName:
+          type: string
+          description: 已执行的 action 的名称 (用于 ResultMessage)。
+        result:
+          type: object
+          additionalProperties: true
+          description: Action 的结果 (用于 ResultMessage)。
+        isError:
+          type: boolean
+          description: 标志该结果是否为错误 (用于 ResultMessage)。
+
+    MetaEvent:
+      type: object
+      description: 提供元数据或控制信号以供执行的特殊事件。
+      properties:
+        name:
+          type: string
+        value:
+          type: object
+          additionalProperties: true

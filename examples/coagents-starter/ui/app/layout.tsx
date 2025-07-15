@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: any }) {
         <CopilotKit
           agent="sample_agent"
           runtimeUrl="/api/copilotkit"
-          showDevConsole={true}
+          showDevConsole={false}
         >
           {children}
         </CopilotKit>
