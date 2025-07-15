@@ -25,3 +25,5 @@ __pycache__/
 *.env
 *.next
 .venv
+examples/coagents-starter/agent-py/agent.log
+examples/coagents-starter/ui/ui.log

@@ -1,0 +1,36 @@
+services:
+  # Python Agent服务
+  - type: web
+    name: copilotkit-iz6c
+    runtime: docker
+    dockerfilePath: ./Dockerfile.agent-py
+    plan: starter
+    region: oregon
+    branch: main
+    healthCheckPath: /health
+    envVars:
+      - key: LANGGRAPH_API
+        value: "true"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PYTHONPATH
+        value: /app
+        
+  # UI服务 - Next.js前端
+  - type: web
+    name: copilotkit-ui
+    runtime: docker
+    dockerfilePath: ./Dockerfile.ui
+    plan: starter
+    region: oregon
+    branch: main
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_AGENT_URL
+        value: https://copilotkit-iz6c.onrender.com
+      - key: REMOTE_ACTION_URL
+        value: https://copilotkit-iz6c.onrender.com/copilotkit
+      - key: OPENAI_API_KEY
+        sync: false

@@ -1,0 +1,31 @@
+FROM python:3.12-bookworm
+
+ENV POETRY_VIRTUALENVS_CREATE=false
+
+# Install Poetry
+RUN pip install poetry
+
+# Set working directory
+WORKDIR /app
+
+# Copy Python agent files
+COPY agent-py/pyproject.toml ./
+RUN poetry lock && poetry install --only=main --no-root
+
+# Copy the rest of the application
+COPY agent-py/ ./
+
+# Install additional dependencies
+RUN pip install -U "langgraph-cli[inmem]>=0.3.4"
+
+# Create .langgraph_api directory
+RUN mkdir -p .langgraph_api
+
+# Set Python path to include current directory
+ENV PYTHONPATH=/app:$PYTHONPATH
+
+# Expose port
+EXPOSE 8000
+
+# Run the application using the demo script
+CMD ["python", "-c", "from sample_agent.demo import main; main()"] 

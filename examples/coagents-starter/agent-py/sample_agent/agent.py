@@ -4,8 +4,8 @@ It defines the workflow graph, state, tools, nodes and edges.
 """
 
 import os
+import logging
 from typing_extensions import Literal
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
 from langchain.tools import tool
@@ -13,6 +13,11 @@ from langgraph.graph import StateGraph, END
 from langgraph.types import Command
 from langgraph.prebuilt import ToolNode
 from copilotkit import CopilotKitState
+from langchain_anthropic import ChatAnthropic
+
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class AgentState(CopilotKitState):
     """
@@ -23,25 +28,16 @@ class AgentState(CopilotKitState):
     which will be used to set the language of the agent.
     """
     proverbs: list[str] = []
-    # your_custom_agent_state: str = ""
 
 @tool
 def get_weather(location: str):
     """
     Get the weather for a given location.
     """
+    logger.info(f"Getting weather for {location}")
     return f"The weather for {location} is 70 degrees."
 
-# @tool
-# def your_tool_here(your_arg: str):
-#     """Your tool description here."""
-#     print(f"Your tool logic here")
-#     return "Your tool response here."
-
-tools = [
-    get_weather
-    # your_tool_here
-]
+tools = [get_weather]
 
 async def chat_node(state: AgentState, config: RunnableConfig) -> Command[Literal["tool_node", "__end__"]]:
     """
@@ -54,38 +50,45 @@ async def chat_node(state: AgentState, config: RunnableConfig) -> Command[Litera
     For more about the ReAct design pattern, see:
     https://www.perplexity.ai/search/react-agents-NcXLQhreS0WDzpVaS4m9Cg
     """
-
+    
+    logger.info("Starting chat_node execution")
+    
     # 1. Define the model
-    model = ChatOpenAI(model="gpt-4o")
+    model = ChatAnthropic(model="claude-3-5-sonnet-20240620",
+                                   api_key=os.getenv("ANTHROPIC_API_KEY"))
 
     # 2. Bind the tools to the model
+    available_tools = [*state["copilotkit"]["actions"], get_weather]
+    
     model_with_tools = model.bind_tools(
-        [
-            *state["copilotkit"]["actions"],
-            get_weather,
-            # your_tool_here
-        ],
-
-        # 2.1 Disable parallel tool calls to avoid race conditions,
-        #     enable this for faster performance if you want to manage
-        #     the complexity of running tool calls in parallel.
+        available_tools,
+        # Disable parallel tool calls to avoid race conditions,
+        # enable this for faster performance if you want to manage
+        # the complexity of running tool calls in parallel.
         parallel_tool_calls=False,
     )
 
     # 3. Define the system message by which the chat model will be run
     system_message = SystemMessage(
-        content=f"You are a helpful assistant. Talk in {state.get('language', 'english')}."
+        content=f"You are a helpful assistant. Talk in {state.get('language', 'chinese')}."
     )
 
     # 4. Run the model to generate a response
-    response = await model_with_tools.ainvoke([
-        system_message,
-        *state["messages"],
-    ], config)
+    try:
+        response = await model_with_tools.ainvoke([
+            system_message,
+            *state["messages"],
+        ], config)
+        logger.info("Model response received successfully")
+    except Exception as e:
+        logger.error(f"Model call failed: {str(e)}")
+        raise
 
     # 5. Check for tool calls in the response and handle them. We ignore
     #    CopilotKit actions, as they are handled by CopilotKit.
     if isinstance(response, AIMessage) and response.tool_calls:
+        logger.info(f"Found {len(response.tool_calls)} tool calls")
+        
         actions = state["copilotkit"]["actions"]
 
         # 5.1 Check for any non-copilotkit actions in the response and
@@ -94,9 +97,13 @@ async def chat_node(state: AgentState, config: RunnableConfig) -> Command[Litera
             action.get("name") == response.tool_calls[0].get("name")
             for action in actions
         ):
+            logger.info("Going to tool_node for non-CopilotKit tool calls")
             return Command(goto="tool_node", update={"messages": response})
+        else:
+            logger.info("Tool calls are CopilotKit actions, letting CopilotKit handle them")
 
     # 6. We've handled all tool calls, so we can end the graph.
+    logger.info("Finishing chat_node - going to END")
     return Command(
         goto=END,
         update={
@@ -118,11 +125,17 @@ is_langgraph_api = (
     os.environ.get("LANGGRAPH_API_DIR") is not None
 )
 
+logger.info(f"LangGraph API mode: {is_langgraph_api}")
+
 if is_langgraph_api:
     # When running in LangGraph API/dev, don't use a custom checkpointer
+    logger.info("Using LangGraph API mode - no checkpointer")
     graph = workflow.compile()
 else:
     # For CopilotKit and other contexts, use MemorySaver
+    logger.info("Using CopilotKit mode - with MemorySaver checkpointer")
     from langgraph.checkpoint.memory import MemorySaver
     memory = MemorySaver()
     graph = workflow.compile(checkpointer=memory)
+
+logger.info("Agent graph compiled successfully")
