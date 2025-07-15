@@ -1,0 +1,78 @@
+# =============================================================================
+# LangGraph Standalone Container (Lite) - Docker Compose 配置
+# =============================================================================
+
+version: '3.8'
+
+volumes:
+  langgraph-data:
+    driver: local
+  redis-data:
+    driver: local
+
+services:
+  # Redis 服务 - 用于流式输出和实时通信
+  langgraph-redis:
+    image: redis:7-alpine
+    container_name: langgraph-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # PostgreSQL 数据库 - 用于存储状态和数据
+  langgraph-postgres:
+    image: postgres:16-alpine
+    container_name: langgraph-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: langgraph
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - langgraph-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # LangGraph API 服务 - 主要的代理服务
+  langgraph-api:
+    image: ${IMAGE_NAME:-langgraph-agent:latest}
+    container_name: langgraph-api
+    restart: unless-stopped
+    ports:
+      - "8123:8000"
+    depends_on:
+      langgraph-redis:
+        condition: service_healthy
+      langgraph-postgres:
+        condition: service_healthy
+    environment:
+      # 必需的环境变量
+      REDIS_URI: redis://langgraph-redis:6379
+      DATABASE_URI: postgres://postgres:postgres@langgraph-postgres:5432/langgraph?sslmode=disable
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+      
+      # 可选的环境变量
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - ./logs:/app/logs 
