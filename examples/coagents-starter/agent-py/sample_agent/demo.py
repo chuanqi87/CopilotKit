@@ -14,6 +14,18 @@ from copilotkit import CopilotKitRemoteEndpoint, LangGraphAgent
 from sample_agent.agent import graph
 
 app = FastAPI()
+
+# Add health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring services."""
+    return {
+        "status": "healthy",
+        "service": "coagents-python-agent",
+        "version": "1.0.0",
+        "timestamp": os.getenv("STARTED_AT", "unknown")
+    }
+
 sdk = CopilotKitRemoteEndpoint(
     agents=[
         LangGraphAgent(

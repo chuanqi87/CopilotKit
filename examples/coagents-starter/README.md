@@ -2,6 +2,20 @@
 
 This example contains a simple starter project which includes two different agents, one written in Python and one in JavaScript.
 
+## 🚀 部署到 Render
+
+您可以快速将此项目部署到 Render 平台：
+
+```bash
+# 快速部署准备
+./deploy-render.sh
+
+# 或者手动查看部署指南
+cat DEPLOY_TO_RENDER.md
+```
+
+项目包含完整的 Render 部署配置 (`render.yaml`) 和详细的部署说明。
+
 **These instructions assume you are in the `coagents-starter/` directory**
 
 ## Quick Start (Python Agent)

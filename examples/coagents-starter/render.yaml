@@ -1,0 +1,57 @@
+services:
+  # Python Agent Service
+  - type: web
+    name: coagents-python-agent
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./agent-py/Dockerfile
+    rootDir: ./agent-py
+    buildCommand: ""
+    startCommand: ""
+    region: oregon
+    env: node
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: LANGGRAPH_API
+        value: "true"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: PORT
+        value: "8000"
+    healthCheckPath: "/health"
+    domains:
+      - coagents-python-agent.onrender.com
+
+  # UI Service (Next.js)
+  - type: web
+    name: coagents-ui
+    runtime: node
+    plan: starter
+    rootDir: ./ui
+    buildCommand: "pnpm install && pnpm run build"
+    startCommand: "pnpm start"
+    region: oregon
+    env: node
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: REMOTE_ACTION_URL
+        value: "https://coagents-python-agent.onrender.com/copilotkit"
+      - key: NODE_ENV
+        value: "production"
+      - key: NEXT_PUBLIC_DEPLOYMENT_URL
+        value: "https://coagents-ui.onrender.com"
+    healthCheckPath: "/api/health"
+    domains:
+      - coagents-ui.onrender.com
+
+# 数据库服务 (可选)
+databases:
+  - name: coagents-redis
+    databaseName: coagents
+    user: coagents
+    region: oregon
+    plan: starter
