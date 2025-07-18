@@ -12,8 +12,19 @@ import uvicorn
 from copilotkit.integrations.fastapi import add_fastapi_endpoint
 from copilotkit import CopilotKitRemoteEndpoint, LangGraphAgent
 from sample_agent.agent import graph
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+# 配置CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 sdk = CopilotKitRemoteEndpoint(
     agents=[
         LangGraphAgent(

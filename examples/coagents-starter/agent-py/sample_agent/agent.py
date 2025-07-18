@@ -118,24 +118,10 @@ workflow.add_node("tool_node", ToolNode(tools=tools))
 workflow.add_edge("tool_node", "chat_node")
 workflow.set_entry_point("chat_node")
 
-# Conditionally use a checkpointer based on the environment
-# Check for multiple indicators that we're running in LangGraph dev/API mode
-is_langgraph_api = (
-    os.environ.get("LANGGRAPH_API", "false").lower() == "true" or
-    os.environ.get("LANGGRAPH_API_DIR") is not None
-)
-
-logger.info(f"LangGraph API mode: {is_langgraph_api}")
-
-if is_langgraph_api:
-    # When running in LangGraph API/dev, don't use a custom checkpointer
-    logger.info("Using LangGraph API mode - no checkpointer")
-    graph = workflow.compile()
-else:
-    # For CopilotKit and other contexts, use MemorySaver
-    logger.info("Using CopilotKit mode - with MemorySaver checkpointer")
-    from langgraph.checkpoint.memory import MemorySaver
-    memory = MemorySaver()
-    graph = workflow.compile(checkpointer=memory)
+# For CopilotKit and other contexts, use MemorySaver
+logger.info("Using CopilotKit mode - with MemorySaver checkpointer")
+from langgraph.checkpoint.memory import MemorySaver
+memory = MemorySaver()
+graph = workflow.compile(checkpointer=memory)
 
 logger.info("Agent graph compiled successfully")
