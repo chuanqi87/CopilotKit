@@ -1,0 +1,30 @@
+services:
+  # Python Agent Service
+  - type: web
+    name: copilotkit-agent
+    env: python
+    plan: starter
+    region: oregon
+    buildCommand: pip install poetry && cd examples/coagents-starter/agent-py && poetry config virtualenvs.create false && poetry lock && poetry install --only=main --no-root && pip install -U "langgraph-cli[inmem]>=0.3.4"
+    startCommand: cd examples/coagents-starter/agent-py && export LANGGRAPH_API=true && export PYTHONPATH=/opt/render/project/src/examples/coagents-starter/agent-py:$PYTHONPATH && python -c "from sample_agent.demo import main; main()"
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: LANGGRAPH_API
+        value: true
+      - key: PORT
+        value: 8000
+    healthCheckPath: /health
+
+  # UI Service
+  - type: web
+    name: copilotkit-ui
+    env: node
+    plan: starter
+    region: oregon
+    buildCommand: cd examples/coagents-starter/ui && npm install -g pnpm && pnpm install && pnpm run build
+    startCommand: cd examples/coagents-starter/ui && pnpm start
+    envVars:
+      - key: REMOTE_ACTION_URL
+        value: https://copilotkit-agent.onrender.com/agent-ui
+    healthCheckPath: /

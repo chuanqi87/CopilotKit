@@ -27,17 +27,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-sdk = CopilotKitRemoteEndpoint(
-    agents=[
-        LangGraphAgent(
-            name="sample_agent",
-            description="An example agent to use as a starting point for your own agent.",
-            graph=graph,
-        )
-    ],
-)
-
-add_fastapi_endpoint(app, sdk, "/copilotkit")
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Render."""
+    return {"status": "healthy", "service": "copilotkit-agent-py"}
 
 add_langgraph_fastapi_endpoint(
   app=app,
