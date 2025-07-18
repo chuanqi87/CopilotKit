@@ -8,7 +8,7 @@ packages = [{include = "sample_agent"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.14"
-copilotkit = "^0.1.55"
+copilotkit = {path = "../../../sdk-python"}
 langchain = "^0.3.26"
 langgraph = "^0.3.34"
 langsmith = "^0.4.5"

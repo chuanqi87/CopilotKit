@@ -13,6 +13,8 @@ from copilotkit.integrations.fastapi import add_fastapi_endpoint
 from copilotkit import CopilotKitRemoteEndpoint, LangGraphAgent
 from sample_agent.agent import graph
 from fastapi.middleware.cors import CORSMiddleware
+from ag_ui_langgraph import add_langgraph_fastapi_endpoint 
+from copilotkit import LangGraphAGUIAgent 
 
 app = FastAPI()
 
@@ -36,6 +38,16 @@ sdk = CopilotKitRemoteEndpoint(
 )
 
 add_fastapi_endpoint(app, sdk, "/copilotkit")
+
+add_langgraph_fastapi_endpoint(
+  app=app,
+  agent=LangGraphAGUIAgent(
+    name="sample_agent", # the name of your agent defined in langgraph.json
+    description="An example agent to use as a starting point for your own agent.",
+    graph=graph, # the graph object from your langgraph import
+  ),
+  path="/agent-ui", # the endpoint you'd like to serve your agent on
+)
 
 def main():
     """Run the uvicorn server."""
