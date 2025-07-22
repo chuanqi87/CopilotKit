@@ -7,12 +7,15 @@ import {
   // uncomment this if you want to use LangGraph Platform
   // langGraphPlatformEndpoint,
 } from "@copilotkit/runtime";
+import { HttpAgent } from "@ag-ui/client";
 
 const serviceAdapter = new ExperimentalEmptyAdapter();
 
 const runtime = new CopilotRuntime({
   agents: {
       'sample_agent': new LangGraphHttpAgent({url: process.env.REMOTE_ACTION_URL || "http://localhost:8000/agent-ui"}),
+      'agui_agent': new HttpAgent({url: process.env.REMOTE_ACTION_URL || "http://localhost:8000/agui"}),
+
     },
   // remoteEndpoints: [
   //   // Uncomment this if you want to use LangGraph JS, make sure to
