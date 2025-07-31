@@ -31,8 +31,16 @@ async def agui_mock(request: Request):
             await asyncio.sleep(0.3)
             
             # 4. 流式返回消息内容 - 模拟逐字返回
-            full_message = "你好！我是AI助手，很高兴为你服务。我可以帮助你解决各种问题，包括回答问题、协助分析、提供建议等。有什么我可以帮助你的吗？"
-            
+            full_message = """你好！我是AI助手，很高兴为你服务。我可以帮助你
+```js 
+hello world
+```
+解决各种问题，包括 
+
+!(这是图片)[https://img.iplaysoft.com/wp-content/uploads/2019/free-images/free_stock_photo.jpg] 
+
+回答问题、协助分析、提供建议等。有什么我可以帮助你的吗？"""
+
             for i, char in enumerate(full_message):
                 yield f"data: {json.dumps({'type': 'TEXT_MESSAGE_CONTENT', 'messageId': message_id, 'delta': char}, ensure_ascii=False)}\n\n"
                 # 模拟打字机效果，中文字符间隔稍长
@@ -47,7 +55,7 @@ async def agui_mock(request: Request):
             tool_id = f"msg_{int(time.time())}"
             yield f"data: {json.dumps({'type': 'TOOL_CALL_START','toolCallName':'setThemeColor', 'toolCallId': tool_id}, ensure_ascii=False)}\n\n"
             await asyncio.sleep(0.3)
-            yield f"data: {json.dumps({'type': 'TOOL_CALL_ARGS','delta':"{\"themeColor\":\"orange\"}", 'toolCallId': tool_id}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'type': 'TOOL_CALL_ARGS','delta':"{\"themeColor\":\"#008000\"}", 'toolCallId': tool_id}, ensure_ascii=False)}\n\n"
             await asyncio.sleep(0.3)
             yield f"data: {json.dumps({'type': 'TOOL_CALL_END', 'toolCallId': tool_id}, ensure_ascii=False)}\n\n"
             await asyncio.sleep(0.3)

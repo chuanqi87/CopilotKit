@@ -13,8 +13,9 @@ export default function CopilotKitPage() {
     parameters: [{
       name: "themeColor",
       description: "The theme color to set. Make sure to pick nice colors.",
-      required: true, 
+      required: true,
     }],
+    followUp: false,
     handler({ themeColor }) {
       setThemeColor(themeColor);
     },
@@ -26,6 +27,8 @@ export default function CopilotKitPage() {
       <CopilotSidebar
         clickOutsideToClose={false}
         defaultOpen={true}
+        imageUploadsEnabled={true}
+        inputFileAccept="image/*"
         labels={{
           title: "Popup Assistant",
           initial: "👋 Hi, there! You're chatting with an agent. This agent comes with a few tools to get you started.\n\nFor example you can try:\n- **Frontend Tools**: \"Set the theme to orange\"\n- **Shared State**: \"Write a proverb about AI\"\n- **Generative UI**: \"Get the weather in SF\"\n\n**✨ 新增卡片功能：**\n- **用户资料卡片**: \"Show user profile for John Doe, Software Engineer\"\n- **产品卡片**: \"Show product iPhone 15, price $999, category Electronics\"\n- **任务卡片**: \"Create task Complete project, high priority, due tomorrow\"\n- **统计卡片**: \"Show stats Revenue $50,000, +15% vs last month\"\n- **选项卡片**: \"Show options for favorite programming language: JavaScript,Python,TypeScript,Go\"\n\nAs you interact with the agent, you'll see the UI update in real-time to reflect the agent's **state**, **tool calls**, and **progress**."
