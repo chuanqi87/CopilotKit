@@ -282,6 +282,7 @@ export function useChat(options: UseChatOptions): UseChatHelpers {
     headers,
     credentials: copilotConfig.credentials,
     showDevConsole,
+    aguiUrl: copilotConfig.aguiUrl, // 🔄 传递 AGUI URL 参数
   });
 
   const pendingAppendsRef = useRef<{ message: Message; followUp: boolean }[]>([]);
@@ -478,7 +479,6 @@ export function useChat(options: UseChatOptions): UseChatHelpers {
             if (ev.name === MetaEventName.CopilotKitLangGraphInterruptEvent) {
               const data = (ev as CopilotKitLangGraphInterruptEvent).data;
 
-              // @ts-expect-error -- same type of messages
               rawMessagesResponse = [...rawMessagesResponse, ...data.messages];
               interruptMessages = convertGqlOutputToMessages(
                 // @ts-ignore
@@ -874,7 +874,7 @@ export function useChat(options: UseChatOptions): UseChatHelpers {
 
   const runChatCompletionAndHandleFunctionCall = useAsyncCallback(
     async (messages: Message[]): Promise<void> => {
-      await runChatCompletionRef.current!(messages);
+        await runChatCompletionRef.current!(messages);
     },
     [messages],
   );

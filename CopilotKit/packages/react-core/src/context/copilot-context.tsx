@@ -20,6 +20,7 @@ import {
   LangGraphInterruptAction,
   LangGraphInterruptActionSetter,
 } from "../types/interrupt-action";
+import { AGUIDirectClient } from "../lib/AGUIDirectClient";
 
 /**
  * Interface for the configuration of the Copilot API.
@@ -86,6 +87,11 @@ export interface CopilotApiConfig {
    * @experimental
    */
   mcpServers?: Array<{ endpoint: string; apiKey?: string }>;
+
+  /**
+   * The endpoint for the AGUI instance.
+   */
+  aguiUrl?: string;
 }
 
 export type InChatRenderFunction<TProps = ActionRenderProps<any> | CatchAllActionRenderProps<any>> =
@@ -189,8 +195,8 @@ export interface CopilotContextParams {
   // i.e. when using `stop()` from `useChat`
   chatAbortControllerRef: React.MutableRefObject<AbortController | null>;
 
-  // runtime
-  runtimeClient: CopilotRuntimeClient;
+  // runtime - 支持 CopilotRuntimeClient 或 AGUIDirectClient
+  runtimeClient: CopilotRuntimeClient | AGUIDirectClient;
 
   /**
    * The forwarded parameters to use for the task.

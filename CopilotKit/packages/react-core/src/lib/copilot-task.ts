@@ -61,6 +61,7 @@ import {
 import { FrontendAction, processActionsForRuntimeRequest } from "../types/frontend-action";
 import { CopilotContextParams } from "../context";
 import { defaultCopilotContextCategories } from "../components";
+import { createRuntimeClient } from "../hooks/use-copilot-runtime-client";
 
 export interface CopilotTaskConfig {
   /**
@@ -131,11 +132,12 @@ export class CopilotTask<T = any> {
 
     const messages: Message[] = [systemMessage];
 
-    const runtimeClient = new CopilotRuntimeClient({
+    const runtimeClient = createRuntimeClient({
       url: context.copilotApiConfig.chatApiEndpoint,
       publicApiKey: context.copilotApiConfig.publicApiKey,
       headers: context.copilotApiConfig.headers,
       credentials: context.copilotApiConfig.credentials,
+      aguiUrl: context.copilotApiConfig.aguiUrl, // 🔄 传递 AGUI URL 参数
     });
 
     const response = await runtimeClient

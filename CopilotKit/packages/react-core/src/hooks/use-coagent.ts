@@ -248,6 +248,7 @@ export function useCoAgent<T = any>(options: UseCoagentOptions<T>): UseCoagentRe
     headers,
     credentials: copilotApiConfig.credentials,
     showDevConsole: context.showDevConsole,
+    aguiUrl: copilotApiConfig.aguiUrl, // 🔄 传递 AGUI URL 参数
   });
 
   // if we manage state internally, we need to provide a function to set the state

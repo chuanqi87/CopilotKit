@@ -228,6 +228,7 @@ export function CopilotKitInternal(cpkProps: CopilotKitProps) {
       transcribeAudioUrl: props.transcribeAudioUrl,
       textToSpeechUrl: props.textToSpeechUrl,
       credentials: props.credentials,
+      aguiUrl: props.aguiUrl,
     };
   }, [
     props.publicApiKey,
@@ -238,6 +239,7 @@ export function CopilotKitInternal(cpkProps: CopilotKitProps) {
     props.credentials,
     props.cloudRestrictToTopic,
     props.guardrails_c,
+    props.aguiUrl,
   ]);
 
   const headers = useMemo(() => {
@@ -273,6 +275,7 @@ export function CopilotKitInternal(cpkProps: CopilotKitProps) {
     credentials: copilotApiConfig.credentials,
     showDevConsole: props.showDevConsole ?? false,
     onError: props.onError,
+    aguiUrl: copilotApiConfig.aguiUrl, // 🔄 从 copilotApiConfig 获取 AGUI URL 参数
   });
 
   const [chatSuggestionConfiguration, setChatSuggestionConfiguration] = useState<{
@@ -530,8 +533,8 @@ function formatFeatureName(featureName: string): string {
 function validateProps(props: CopilotKitProps): never | void {
   const cloudFeatures = Object.keys(props).filter((key) => key.endsWith("_c"));
 
-  if (!props.runtimeUrl && !props.publicApiKey) {
-    throw new ConfigurationError("Missing required prop: 'runtimeUrl' or 'publicApiKey'");
+  if (!props.runtimeUrl && !props.publicApiKey && !props.aguiUrl) {
+    throw new ConfigurationError("Missing required prop: 'runtimeUrl' or 'publicApiKey' or 'aguiUrl'");
   }
 
   if (cloudFeatures.length > 0 && !props.publicApiKey) {

@@ -38,6 +38,11 @@ export interface CopilotKitProps {
   runtimeUrl?: string;
 
   /**
+   * The endpoint for the AGUI instance.
+   */
+  aguiUrl?: string;
+  
+  /**
    * The endpoint for the Copilot transcribe audio service.
    */
   transcribeAudioUrl?: string;

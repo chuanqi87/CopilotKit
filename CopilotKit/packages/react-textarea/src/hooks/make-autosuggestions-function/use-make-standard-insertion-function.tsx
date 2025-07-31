@@ -62,7 +62,7 @@ export function useMakeStandardInsertionOrEditingFunction(
             break;
           }
 
-          const messages = convertGqlOutputToMessages(value.generateCopilotResponse.messages);
+          const messages = convertGqlOutputToMessages((value as any).generateCopilotResponse.messages);
 
           let newContent = "";
 

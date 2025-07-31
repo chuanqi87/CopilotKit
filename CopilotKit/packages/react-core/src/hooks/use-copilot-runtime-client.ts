@@ -3,6 +3,7 @@ import {
   CopilotRuntimeClientOptions,
   GraphQLError,
 } from "@copilotkit/runtime-client-gql";
+import { AGUIDirectClient } from "../lib/AGUIDirectClient";
 import { useToast } from "../components/toast/toast-provider";
 import { useMemo, useRef } from "react";
 import {
@@ -20,11 +21,12 @@ import { shouldShowDevConsole } from "../utils/dev-console";
 export interface CopilotRuntimeClientHookOptions extends CopilotRuntimeClientOptions {
   showDevConsole?: boolean;
   onError?: CopilotErrorHandler;
+  aguiUrl?: string; // 添加 AGUI URL 支持
 }
 
 export const useCopilotRuntimeClient = (options: CopilotRuntimeClientHookOptions) => {
   const { setBannerError } = useToast();
-  const { showDevConsole, onError, ...runtimeOptions } = options;
+  const { showDevConsole, onError, aguiUrl, ...runtimeOptions } = options;
 
   // Deduplication state for structured errors
   const lastStructuredErrorRef = useRef<{ message: string; timestamp: number } | null>(null);
@@ -60,6 +62,53 @@ export const useCopilotRuntimeClient = (options: CopilotRuntimeClientHookOptions
   };
 
   const runtimeClient = useMemo(() => {
+    // 🔄 如果提供了 aguiUrl，使用 AGUIDirectClient
+    if (aguiUrl) {
+      console.log('[CopilotKit] 🚀 选择AGUIDirectClient作为运行时客户端', {
+        aguiUrl,
+        hasHeaders: !!(runtimeOptions.headers && Object.keys(runtimeOptions.headers).length > 0),
+        credentials: runtimeOptions.credentials,
+        showDevConsole: showDevConsole ?? false
+      });
+      
+      return new AGUIDirectClient({
+        aguiUrl,
+        headers: runtimeOptions.headers || {},
+        credentials: runtimeOptions.credentials,
+        handleGQLErrors: (error) => {
+          // AG-UI 模式的错误处理
+          const isDev = shouldShowDevConsole(showDevConsole ?? false);
+          if (!isDev) {
+            console.error("AG-UI Error (hidden in production):", error);
+          } else {
+            const fallbackError = new CopilotKitError({
+              message: error?.message || String(error),
+              code: CopilotKitErrorCode.UNKNOWN,
+            });
+            setBannerError(fallbackError);
+            traceUIError(fallbackError, error);
+          }
+        },
+        handleGQLWarning: (message: string) => {
+          console.warn(message);
+          const warningError = new CopilotKitError({
+            message,
+            code: CopilotKitErrorCode.UNKNOWN,
+          });
+          setBannerError(warningError);
+        },
+      }) as any; // 使用类型断言以避免类型检查问题
+    }
+
+    // 📡 默认使用 CopilotRuntimeClient
+    console.log('[CopilotKit] 📡 选择CopilotRuntimeClient作为运行时客户端', {
+      url: runtimeOptions.url,
+      publicApiKey: runtimeOptions.publicApiKey ? '已设置' : '未设置',
+      hasHeaders: !!(runtimeOptions.headers && Object.keys(runtimeOptions.headers).length > 0),
+      credentials: runtimeOptions.credentials,
+      showDevConsole: showDevConsole ?? false
+    });
+    
     return new CopilotRuntimeClient({
       ...runtimeOptions,
       handleGQLErrors: (error) => {
@@ -141,7 +190,7 @@ export const useCopilotRuntimeClient = (options: CopilotRuntimeClientHookOptions
         setBannerError(warningError);
       },
     });
-  }, [runtimeOptions, setBannerError, showDevConsole, onError]);
+  }, [runtimeOptions, setBannerError, showDevConsole, onError, aguiUrl]);
 
   return runtimeClient;
 };
@@ -172,4 +221,36 @@ function createStructuredError(gqlError: GraphQLError): CopilotKitError | null {
   }
 
   return null;
+}
+
+/**
+ * 🏭 创建运行时客户端的工厂函数
+ * 用于在非hook环境中创建合适的运行时客户端
+ */
+export function createRuntimeClient(options: CopilotRuntimeClientOptions & { aguiUrl?: string; }) {
+  const { aguiUrl, ...runtimeOptions } = options;
+
+  // 🔄 如果提供了 aguiUrl，使用 AGUIDirectClient
+  if (aguiUrl) {
+    console.log('[CopilotKit] 🚀 工厂函数选择AGUIDirectClient', { aguiUrl });
+    
+    return new AGUIDirectClient({
+      aguiUrl,
+      headers: runtimeOptions.headers || {},
+      credentials: runtimeOptions.credentials,
+      handleGQLErrors: (error) => {
+        console.error("AG-UI Error:", error);
+      },
+      handleGQLWarning: (message: string) => {
+        console.warn("AG-UI Warning:", message);
+      },
+    }) as any;
+  }
+
+  // 📡 默认使用 CopilotRuntimeClient
+  console.log('[CopilotKit] 📡 工厂函数选择CopilotRuntimeClient', {
+    url: runtimeOptions.url
+  });
+  
+  return new CopilotRuntimeClient(runtimeOptions);
 }

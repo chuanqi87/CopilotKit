@@ -16,7 +16,6 @@ import {
 } from "@copilotkit/runtime-client-gql";
 import { CopilotContextParams, CopilotMessagesContextParams } from "../context";
 import { defaultCopilotContextCategories } from "../components";
-import { CopilotRuntimeClient } from "@copilotkit/runtime-client-gql";
 import {
   convertMessagesToGqlInput,
   filterAgentStateMessages,
@@ -153,7 +152,7 @@ export async function extract<const T extends Parameter[]>({
     }
 
     actionExecutionMessage = convertGqlOutputToMessages(
-      value.generateCopilotResponse.messages,
+      (value as any).generateCopilotResponse.messages,
     ).find((msg) => msg.isActionExecutionMessage()) as ActionExecutionMessage | undefined;
 
     if (!actionExecutionMessage) {
