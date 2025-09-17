@@ -12,8 +12,9 @@ from langchain.tools import tool
 from langgraph.graph import StateGraph, END
 from langgraph.types import Command
 from langgraph.prebuilt import ToolNode
-from copilotkit import CopilotKitState
 from langchain_anthropic import ChatAnthropic
+from langgraph.prebuilt import interrupt
+from copilotkit import CopilotKitState
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +35,8 @@ def get_weather(location: str):
     """
     Get the weather for a given location.
     """
+    new_location = interrupt(f"Getting weather for {location}")
+    location = new_location or location
     logger.info(f"Getting weather for {location}")
     return f"The weather for {location} is 70 degrees."
 
@@ -58,7 +61,7 @@ async def chat_node(state: AgentState, config: RunnableConfig) -> Command[Litera
                                    api_key=os.getenv("ANTHROPIC_API_KEY"))
 
     # 2. Bind the tools to the model
-    available_tools = [*state["copilotkit"]["actions"], get_weather]
+    available_tools = [get_weather]
     
     model_with_tools = model.bind_tools(
         available_tools,
@@ -89,7 +92,7 @@ async def chat_node(state: AgentState, config: RunnableConfig) -> Command[Litera
     if isinstance(response, AIMessage) and response.tool_calls:
         logger.info(f"Found {len(response.tool_calls)} tool calls")
         
-        actions = state["copilotkit"]["actions"]
+        actions = state["tools"]
 
         # 5.1 Check for any non-copilotkit actions in the response and
         #     if there are none, go to the tool node.

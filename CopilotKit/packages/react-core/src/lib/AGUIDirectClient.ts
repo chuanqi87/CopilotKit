@@ -330,8 +330,9 @@ export class AGUIDirectClient {
         contextCount: runAgentInput.context?.length
       });
       
-      // 当前消息状态
+      // 当前消息与待发送的 metaEvents（GraphQL 兼容结构）
       let currentMessages: any[] = [];
+      let pendingMetaEvents: any[] = [];
       
       // 创建 AgentSubscriber 来处理事件
       const subscriber = {
@@ -342,12 +343,18 @@ export class AGUIDirectClient {
             messageCount: currentMessages.length
           });
           currentMessages = this.processAGUIEventToMessages(event, currentMessages);
+          // 仅解析 LangGraph 中断事件，转换为 GraphQL 兼容的 metaEvents
+          const newMetaEvents = this.processAGUIEventToMetaEvents(event);
+          if (newMetaEvents.length > 0) {
+            this.log('⏸️ 侦测到 LangGraph 中断事件', { count: newMetaEvents.length });
+            pendingMetaEvents.push(...newMetaEvents);
+          }
           this.log('📤 发送中间结果', { 
             messageCount: currentMessages.length,
             lastMessageType: currentMessages[currentMessages.length - 1]?.__typename
           });
           callback({ 
-            data: { generateCopilotResponse: { messages: currentMessages } }, 
+            data: { generateCopilotResponse: { messages: currentMessages, metaEvents: pendingMetaEvents.splice(0) } }, 
             hasNext: true 
           });
         },
@@ -357,7 +364,7 @@ export class AGUIDirectClient {
             result: result ? 'has result' : 'no result'
           });
           callback({ 
-            data: { generateCopilotResponse: { messages: currentMessages } }, 
+            data: { generateCopilotResponse: { messages: currentMessages, metaEvents: pendingMetaEvents.splice(0) } }, 
             hasNext: false 
           });
         },
@@ -435,6 +442,31 @@ export class AGUIDirectClient {
     const convertedTools = this.convertToolsToAGUI(data.frontend?.actions || []);
     const convertedContext = this.buildAGUIContext(data);
 
+    // 兼容前端为“恢复中断”携带的 metaEvents（LangGraphInterruptEvent 带 response）
+    let forwardedProps: any = { ...(properties || {}) };
+    const lgInterruptEventWithResponse = (data.metaEvents || []).find(
+      // @ts-ignore 运行时宽松判断
+      (ev: any) => ev?.name === 'LangGraphInterruptEvent' && (ev as any)?.response
+    ) as any | undefined;
+    if (lgInterruptEventWithResponse) {
+      try {
+        const rawResponse = lgInterruptEventWithResponse.response;
+        const parsed = this.safeParseJson(rawResponse);
+        forwardedProps = {
+          ...forwardedProps,
+          command: { resume: parsed },
+        };
+        this.log('🔁 检测到恢复中断指令，已设置 forwardedProps.command.resume');
+      } catch (e) {
+        this.warn('⚠️ 解析中断响应失败，跳过设置 resume', { error: (e as Error)?.message });
+      }
+    }
+
+    // 如果前端有带上当前节点信息（如从 useChat 的 agentSession），也一并转发
+    if ((data as any)?.agentSession?.nodeName) {
+      forwardedProps.nodeName = (data as any).agentSession.nodeName;
+    }
+
     const result = {
       threadId,
       runId,
@@ -442,7 +474,7 @@ export class AGUIDirectClient {
       messages: convertedMessages,
       tools: convertedTools,
       context: convertedContext,
-      forwardedProps: properties
+      forwardedProps
     };
 
     this.log('✅ 数据转换完成', {
@@ -506,6 +538,21 @@ export class AGUIDirectClient {
     }
 
     return context;
+  }
+
+  /**
+   * 🧰 安全 JSON 解析
+   */
+  private safeParseJson(input: any): any {
+    if (input == null) return input;
+    if (typeof input === 'string') {
+      try {
+        return JSON.parse(input);
+      } catch {
+        return input;
+      }
+    }
+    return input;
   }
 
   /**
@@ -696,6 +743,58 @@ export class AGUIDirectClient {
     }
 
     return messages;
+  }
+
+  /**
+   * ⏸️ 将 AG-UI 事件转换为 GraphQL 兼容的 LangGraph 中断 metaEvents
+   * 仅解析 LangGraph 的原生中断，不处理 CopilotKit 扩展中断
+   * 期望输出形如：
+   *   { __typename: 'LangGraphInterruptEvent', type: 'MetaEvent', name: 'LangGraphInterruptEvent', value: string }
+   */
+  private processAGUIEventToMetaEvents(event: BaseEvent): any[] {
+    try {
+      // 来自 @ag-ui/langgraph 的中断事件映射：
+      // 1) 原始流事件中可能携带 __interrupt__ 列表（兼容 langgraph 平台）
+      // 2) 或者通过 OnInterrupt 事件类型传递
+      // 两者我们都归一为 GraphQL 的 LangGraphInterruptEvent
+
+      // 情况 1：事件体含有 data.__interrupt__（与 langgraph 平台一致）
+      // @ts-ignore - 事件载荷格式依赖代理端实现
+      const interrupts = (event as any)?.data?.__interrupt__;
+      const results: any[] = [];
+
+      if (Array.isArray(interrupts) && interrupts.length > 0) {
+        for (const it of interrupts) {
+          const value = typeof it?.value === 'string' ? it.value : JSON.stringify(it?.value ?? '');
+          results.push({
+            __typename: 'LangGraphInterruptEvent',
+            type: 'MetaEvent',
+            name: 'LangGraphInterruptEvent',
+            value,
+          });
+        }
+      }
+
+      // 情况 2：事件类型显式是 OnInterrupt（@ag-ui/langgraph 暴露的枚举）
+      // 为了避免引入类型依赖，使用字符串匹配
+      // @ts-ignore
+      if ((event as any)?.event === 'on_interrupt' || (event as any)?.type === 'on_interrupt') {
+        // @ts-ignore
+        const rawValue = (event as any)?.value ?? (event as any)?.data?.value;
+        const value = typeof rawValue === 'string' ? rawValue : JSON.stringify(rawValue ?? '');
+        results.push({
+          __typename: 'LangGraphInterruptEvent',
+          type: 'MetaEvent',
+          name: 'LangGraphInterruptEvent',
+          value,
+        });
+      }
+
+      return results;
+    } catch (e) {
+      this.warn('⚠️ 解析 LangGraph 中断事件失败', { error: (e as Error)?.message });
+      return [];
+    }
   }
 
   /**

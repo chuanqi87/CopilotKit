@@ -14,8 +14,7 @@ from fastapi import FastAPI, Request
 import uvicorn
 from sample_agent.agent import graph
 from fastapi.middleware.cors import CORSMiddleware
-from ag_ui_langgraph import add_langgraph_fastapi_endpoint 
-from copilotkit import LangGraphAGUIAgent 
+from ag_ui_langgraph import add_langgraph_fastapi_endpoint, LangGraphAgent
 
 # 导入日志模块
 from .http_logging import log_requests_middleware, log_info, log_error
@@ -48,7 +47,7 @@ log_info("🚀 FastAPI应用启动")
 
 add_langgraph_fastapi_endpoint(
   app=app,
-  agent=LangGraphAGUIAgent(
+  agent=LangGraphAgent(
     name="sample_agent", # the name of your agent defined in langgraph.json
     description="An example agent to use as a starting point for your own agent.",
     graph=graph, # the graph object from your langgraph import
@@ -61,6 +60,13 @@ add_langgraph_fastapi_endpoint(
 async def agui_handler(request: Request):
     log_info("🚀 接口调用: /agui")
     return await agui_mock(request)
+
+# 测试ag-ui协议实现
+@app.post("/message/stream")
+async def a2a_handler(request: Request):
+    log_info("🚀 接口调用: /message/stream")
+    return await a2a_mock(request)
+
 
 log_info("🚀 LangGraph端点配置完成: /agent-ui")
 

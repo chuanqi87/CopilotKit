@@ -15,7 +15,9 @@ export default function RootLayout({ children }: { children: any }) {
     <html lang="en">
       <body>
         <CopilotKit
-          aguiUrl="http://localhost:8000/agui"
+          runtimeUrl="/api/copilotkit"
+          agent="sample_agent"
+          // aguiUrl="http://localhost:8000/agui"
           showDevConsole={false}
         >
           {children}
