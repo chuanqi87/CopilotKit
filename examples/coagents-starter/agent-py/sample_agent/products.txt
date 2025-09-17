@@ -18,8 +18,8 @@
 
 {"jsonrpc":"2.0","id":"a09410ce-42be-508c-a186-47910f5b\u00263","result":{"taskId":"a09410ce-42be-508c-a186-47910f5b\u00263","kind":"artifact-update","final":false,"append":true,"lastChunk":false,"artifact":{"artifactId":"3dac27c9-5cc5-4c84-9afb-457def729d40","parts":[{"kind":"text","text":"100%生"}]},"state":"working"},"error":{"code":0}}
 
-{"jsonrpc":"2.0","id":"a09410ce-42be-508c-a186-47910f5b\u00263","result":{"taskId":"a09410ce-42be-508c-a186-47910f5b\u00263","kind":"artifact-update","final":false,"append":true,"lastChunk":false,"artifact":{"artifactId":"3dac27c9-5cc5-4c84-9afb-457def729d40","parts":[{"kind":"text","text":"牛乳奶源，"}]},"state":"working"},"error":{"code":0}}
+{"jsonrpc":"2.0","id":"a09410ce-42be-508c-a186-47910f5b\u00263","result":{"taskId":"a09410ce-42be-508c-a186-47910f5b\u00263","kind":"artifact-update","final":false,"append":true,"lastChunk":false,"artifact":{"artifactId":"3dac27c9-5cc5-4c84-9afb-457def729d40","parts":[{"kind":"text","text":"牛乳奶源"}]},"state":"working"},"error":{"code":0}}
 
 {"jsonrpc":"2.0","id":"a09410ce-42be-508c-a186-47910f5b\u00263","result":{"taskId":"a09410ce-42be-508c-a186-47910f5b\u00263","kind":"artifact-update","final":false,"append":true,"lastChunk":false,"artifact":{"artifactId":"3dac27c9-5cc5-4c84-9afb-457def729d40","parts":[{"kind":"text","text":"消署"}]},"state":"working"},"error":{"code":0}}
 
-{"jsonrpc":"2.0","id":"a09410ce-42be-508c-a186-47910f5b\u00263","result":{"taskId":"a09410ce-42be-508c-a186-47910f5b\u00263","kind":"artifact-update","final":false,"append":true,"lastChunk":false,"artifact":{"artifactId":"3dac27c9-5cc5-4c84-9afb-457def729d40","parts":[{"kind":"text","text":"必备~"}]},"state":"working"},"error":{"code":0}}
+{"jsonrpc":"2.0","id":"a09410ce-42be-508c-a186-47910f5b\u00263","result":{"taskId":"a09410ce-42be-508c-a186-47910f5b\u00263","kind":"artifact-update","final":true,"append":true,"lastChunk":false,"artifact":{"artifactId":"3dac27c9-5cc5-4c84-9afb-457def729d40","parts":[{"kind":"text","text":"必备~"}]},"state":"working"},"error":{"code":0}}
