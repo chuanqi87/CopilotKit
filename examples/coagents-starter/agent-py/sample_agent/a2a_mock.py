@@ -1,74 +1,73 @@
 import json
 import time
 import asyncio
+import os
 from fastapi import Request
 from fastapi.responses import StreamingResponse
 from .http_logging import log_info
 
 
 async def a2a_mock(request: Request):
-    
     # 解析请求体获取RunAgentInput参数
     body = await request.json()
-    run_id = body.get("runId", f"run_{int(time.time())}")
-    messages = body.get("messages", [])
-    thread_id = body.get("threadId", f"thread_{int(time.time())}")
+    method = body.get("method", "")
+    params = body.get("params", {})
     
-    log_info(f"🔵 运行ID: {run_id}")
-    log_info(f"🔵 线程ID: {thread_id}")
-    log_info(f"🔵 消息数量: {len(messages)}")
+    log_info(f"🔵 方法: {method}")
+    log_info(f"🔵 参数: {params}")
     
     async def generate_a2a_events():
         """生成a2a协议格式的SSE事件流"""
         try:
-            # 1. 运行开始事件
-            yield f"data: {json.dumps({'type': 'RUN_STARTED', 'runId': run_id, 'threadId': thread_id}, ensure_ascii=False)}\n\n"
-            await asyncio.sleep(0.5)
+            # 获取products.txt文件的路径
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            products_file_path = os.path.join(current_dir, "products.txt")
             
-            # 3. 文本消息开始事件
-            message_id = f"msg_{int(time.time())}"
-            yield f"data: {json.dumps({'type': 'TEXT_MESSAGE_START', 'messageId': message_id, 'role': 'assistant'}, ensure_ascii=False)}\n\n"
-            await asyncio.sleep(0.3)
+            log_info(f"📁 当前目录: {current_dir}")
+            log_info(f"📄 文件路径: {products_file_path}")
             
-            # 4. 流式返回消息内容 - 模拟逐字返回
-            full_message = """你好！我是AI助手，很高兴为你服务。我可以帮助你"""
-
-            for i, char in enumerate(full_message):
-                yield f"data: {json.dumps({'type': 'TEXT_MESSAGE_CONTENT', 'messageId': message_id, 'delta': char}, ensure_ascii=False)}\n\n"
-                # 模拟打字机效果，中文字符间隔稍长
-                await asyncio.sleep(0.1 if ord(char) > 127 else 0.05)
+            # 检查文件是否存在
+            if not os.path.exists(products_file_path):
+                log_info(f"❌ 文件不存在: {products_file_path}")
+                # 列出当前目录的文件，帮助调试
+                try:
+                    files_in_dir = os.listdir(current_dir)
+                    log_info(f"📋 当前目录文件列表: {files_in_dir}")
+                except Exception as e:
+                    log_info(f"❌ 无法列出目录文件: {e}")
+                return
             
-            await asyncio.sleep(0.5)
-
-            # 5. 文本消息结束事件
-            yield f"data: {json.dumps({'type': 'TEXT_MESSAGE_END', 'messageId': message_id}, ensure_ascii=False)}\n\n"
-            await asyncio.sleep(0.3)
-
-            tool_id = f"msg_{int(time.time())}"
-            yield f"data: {json.dumps({'type': 'TOOL_CALL_START','toolCallName':'setThemeColor', 'toolCallId': tool_id}, ensure_ascii=False)}\n\n"
-            await asyncio.sleep(0.3)
-            yield f"data: {json.dumps({'type': 'TOOL_CALL_ARGS','delta':"{\"themeColor\":\"#008000\"}", 'toolCallId': tool_id}, ensure_ascii=False)}\n\n"
-            await asyncio.sleep(0.3)
-            yield f"data: {json.dumps({'type': 'TOOL_CALL_END', 'toolCallId': tool_id}, ensure_ascii=False)}\n\n"
-            await asyncio.sleep(0.3)
-            # 7. 运行结束事件
-            yield f"data: {json.dumps({'type': 'RUN_FINISHED', 'threadId': thread_id, 'runId': run_id, 'status': 'completed'}, ensure_ascii=False)}\n\n"
+            # 按行读取文件内容并发送
+            with open(products_file_path, 'r', encoding='utf-8') as file:
+                for line_number, line in enumerate(file, 1):
+                    line = line.strip()  # 去除行末的换行符和空格
+                    
+                    # 跳过空行
+                    if not line:
+                        continue
+                    
+                    log_info(f"📤 发送第 {line_number} 行数据")
+                    
+                    # 发送当前行的数据
+                    yield f"data: {line}\n\n"
+                    
+                    # 等待0.3秒
+                    await asyncio.sleep(0.3)
+            
+            log_info("✅ 所有数据发送完成")
             
         except Exception as e:
-            # 发送错误事件
-            error_event = {
-                'type': 'run_error', 
-                'run_id': run_id,
-                'error': {
-                    'code': 'INTERNAL_ERROR',
-                    'message': str(e),
-                    'timestamp': time.time()
-                }
+            log_info(f"❌ 读取文件时发生错误: {str(e)}")
+            # 发送错误信息
+            error_data = {
+                "jsonrpc": "2.0",
+                "id": "error",
+                "error": {"code": -1, "message": f"读取文件错误: {str(e)}"}
             }
-            yield f"data: {json.dumps(error_event, ensure_ascii=False)}\n\n"
-    
+            yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
+            
     return StreamingResponse(
-        generate_agui_events(),
+        generate_a2a_events(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

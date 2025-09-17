@@ -19,6 +19,7 @@ from ag_ui_langgraph import add_langgraph_fastapi_endpoint, LangGraphAgent
 # 导入日志模块
 from .http_logging import log_requests_middleware, log_info, log_error
 from .agui_mock import agui_mock
+from .a2a_mock import a2a_mock
 
 app = FastAPI()
 
