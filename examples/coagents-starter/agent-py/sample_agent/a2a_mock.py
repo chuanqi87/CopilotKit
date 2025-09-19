@@ -16,19 +16,47 @@ async def a2a_mock(request: Request):
     log_info(f"🔵 方法: {method}")
     log_info(f"🔵 参数: {params}")
     
+    # 关键字到文件的映射配置 - 具有扩展性
+    KEYWORD_FILE_MAPPING = {
+        "推荐": "products.txt",
+        "订单": "summary.txt",
+        # 后续可以在这里添加更多映射
+        # "库存": "inventory.txt",
+        # "用户": "users.txt",
+    }
+    
+    def determine_target_file(params):
+        """根据params中的关键字确定目标文件"""
+        # 将params转换为字符串进行匹配
+        params_str = json.dumps(params, ensure_ascii=False) if isinstance(params, dict) else str(params)
+        
+        # 遍历映射配置，查找匹配的关键字
+        for keyword, filename in KEYWORD_FILE_MAPPING.items():
+            if keyword in params_str:
+                log_info(f"🎯 检测到关键字 '{keyword}'，将使用文件: {filename}")
+                return filename
+        
+        # 如果没有匹配到关键字，使用默认文件
+        default_file = "products.txt"
+        log_info(f"⚠️ 未检测到匹配的关键字，使用默认文件: {default_file}")
+        return default_file
+    
     async def generate_a2a_events():
         """生成a2a协议格式的SSE事件流"""
         try:
-            # 获取products.txt文件的路径
+            # 确定目标文件
+            target_filename = determine_target_file(params)
+            
+            # 获取目标文件的路径
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            products_file_path = os.path.join(current_dir, "products.txt")
+            target_file_path = os.path.join(current_dir, target_filename)
             
             log_info(f"📁 当前目录: {current_dir}")
-            log_info(f"📄 文件路径: {products_file_path}")
+            log_info(f"📄 目标文件路径: {target_file_path}")
             
             # 检查文件是否存在
-            if not os.path.exists(products_file_path):
-                log_info(f"❌ 文件不存在: {products_file_path}")
+            if not os.path.exists(target_file_path):
+                log_info(f"❌ 文件不存在: {target_file_path}")
                 # 列出当前目录的文件，帮助调试
                 try:
                     files_in_dir = os.listdir(current_dir)
@@ -38,7 +66,7 @@ async def a2a_mock(request: Request):
                 return
             
             # 按行读取文件内容并发送
-            with open(products_file_path, 'r', encoding='utf-8') as file:
+            with open(target_file_path, 'r', encoding='utf-8') as file:
                 for line_number, line in enumerate(file, 1):
                     line = line.strip()  # 去除行末的换行符和空格
                     
