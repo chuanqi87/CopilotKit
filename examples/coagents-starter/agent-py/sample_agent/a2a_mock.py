@@ -23,6 +23,12 @@ async def a2a_mock(request: Request):
         # 后续可以在这里添加更多映射
         "待付款": "pending.txt",
         "核对": "review.txt",
+        "成功": "success.txt",
+        "失败": "failed.txt",
+        "取消": "cancel.txt",
+        "门店": "shop.txt",
+        "购物车": "cart.txt",
+        "用户": "users.txt",
     }
     
     def determine_target_file(params):
@@ -49,7 +55,7 @@ async def a2a_mock(request: Request):
             
             # 获取目标文件的路径
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            target_file_path = os.path.join(current_dir, target_filename)
+            target_file_path = os.path.join(current_dir, 'data', target_filename)
             
             log_info(f"📁 当前目录: {current_dir}")
             log_info(f"📄 目标文件路径: {target_file_path}")
