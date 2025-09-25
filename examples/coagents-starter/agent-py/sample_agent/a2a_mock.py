@@ -21,8 +21,8 @@ async def a2a_mock(request: Request):
         "推荐": "products.txt",
         "订单": "summary.txt",
         # 后续可以在这里添加更多映射
-        # "库存": "inventory.txt",
-        # "用户": "users.txt",
+        "待付款": "pending.txt",
+        "核对": "review.txt",
     }
     
     def determine_target_file(params):
