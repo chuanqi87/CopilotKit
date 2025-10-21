@@ -29,7 +29,8 @@ async def a2a_mock(request: Request):
         "门店": "shop.txt",
         "购物车": "cart.txt",
         "用户": "users.txt",
-        "地理"："location.txt",
+        "地理": "location.txt",
+        "支付": "payment.txt",
     }
     
     def determine_target_file(params):
